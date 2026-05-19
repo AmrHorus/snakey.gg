@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Snake Game</title>
+
+<!-- Google AdSense -->
+<script async
+src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+crossorigin="anonymous"></script>
+
+<style>
+
+body{
+    margin:0;
+    background:#111;
+    font-family:Arial;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+h1{
+    margin-top:20px;
+    font-size:50px;
+    color:#00ffaa;
+}
+
+.top-bar{
+    display:flex;
+    gap:20px;
+    margin:15px;
+    font-size:22px;
+}
+
+canvas{
+    background:black;
+    border:4px solid #00ffaa;
+    border-radius:15px;
+}
+
+.controls{
+    margin-top:15px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+}
+
+button{
+    background:#00aa88;
+    border:none;
+    padding:12px 20px;
+    border-radius:10px;
+    color:white;
+    font-size:18px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+button:hover{
+    background:#00ccaa;
+}
+
+.ad-box{
+    margin-top:20px;
+    width:728px;
+    max-width:95%;
+    background:#1e1e1e;
+    padding:10px;
+    border-radius:15px;
+    text-align:center;
+}
+
+.gc{
+    margin: auto;
+    font-size: 80px;
+
+}
+</style>
+</head>
+
+<body>
+
+<h1>Snake Game "Snakey"</h1>
+
+<div class="top-bar">
+    <div id="score">Score: 0</div>
+    <div id="best">Best: 0</div>
+    <div id="level">Level: Normal</div>
+</div>
+
+<canvas id="game" width="400" height="400"></canvas>
+
+<div class="controls">
+    <label for="gc">Game's Control</label>
+    <br>
+    <button onclick="startGame()">Start</button>
+    <button onclick="togglePause()">Pause</button>
+    <button onclick="restartGame()">Restart</button>
+    <br>
+    <label for="level">Levels</label>
+    <br>
+    <button onclick="setLevel('Easy')">Easy</button>
+    <button onclick="setLevel('Normal')">Normal</button>
+    <button onclick="setLevel('Medium')">Medium</button>
+    <button onclick="setLevel('Hard')">Hard</button>
+    <button onclick="setLevel('Impossible')">Impossible</button>
+</div>
+
+<br>
+
+<!-- ADSENSE -->
+<div class="ad-box">
+
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+     data-ad-slot="1234567890"
+     data-ad-format="auto"
+     data-full-width-responsive="true">
+</ins>
+
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+
+</div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const WIDTH = 400;
+const HEIGHT = 400;
+const SIZE = 25;
+
+let snake = [{x:100, y:100}];
+let direction = "Right";
+
+let food = spawnFood();
+
+let running = false;
+let paused = false;
+
+let score = 0;
+
+let bestScore = localStorage.getItem("bestScore") || 0;
+
+document.getElementById("best").innerText =
+"Best: " + bestScore;
+
+const speeds = {
+    Easy: 180,
+    Normal: 120,
+    Medium: 90,
+    Hard: 60,
+    Impossible: 35
+};
+
+let currentLevel = "Normal";
+let speed = speeds[currentLevel];
+
+function updateLabels(){
+
+    document.getElementById("score").innerText =
+    "Score: " + score;
+
+    document.getElementById("best").innerText =
+    "Best: " + bestScore;
+
+    document.getElementById("level").innerText =
+    "Level: " + currentLevel;
+}
+
+function spawnFood(){
+
+    return {
+
+        x: Math.floor(Math.random() * (WIDTH/SIZE)) * SIZE,
+        y: Math.floor(Math.random() * (HEIGHT/SIZE)) * SIZE
+    };
+}
+
+function draw(){
+
+    ctx.clearRect(0,0,WIDTH,HEIGHT);
+
+    // FOOD
+    ctx.fillStyle = "red";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        food.x + SIZE/2,
+        food.y + SIZE/2,
+        SIZE/2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    // SNAKE
+    snake.forEach((part,index)=>{
+
+        ctx.fillStyle =
+        index === 0 ? "#00ffaa" : "#00ff88";
+
+        ctx.fillRect(
+            part.x,
+            part.y,
+            SIZE,
+            SIZE
+        );
+
+        ctx.strokeStyle = "black";
+
+        ctx.strokeRect(
+            part.x,
+            part.y,
+            SIZE,
+            SIZE
+        );
+    });
+}
+
+function move(){
+
+    if(!running) return;
+
+    if(paused){
+
+        setTimeout(move,speed);
+        return;
+    }
+
+    let head = {
+        x: snake[0].x,
+        y: snake[0].y
+    };
+
+    if(direction === "Right") head.x += SIZE;
+    else if(direction === "Left") head.x -= SIZE;
+    else if(direction === "Up") head.y -= SIZE;
+    else if(direction === "Down") head.y += SIZE;
+
+    // WALL TELEPORT
+
+    if(head.x >= WIDTH) head.x = 0;
+    if(head.x < 0) head.x = WIDTH - SIZE;
+
+    if(head.y >= HEIGHT) head.y = 0;
+    if(head.y < 0) head.y = HEIGHT - SIZE;
+
+    // COLLISION
+
+    for(let i=0;i<snake.length;i++){
+
+        if(head.x === snake[i].x &&
+           head.y === snake[i].y){
+
+            running = false;
+
+            gameOver();
+
+            return;
+        }
+    }
+
+    snake.unshift(head);
+
+    // EAT FOOD
+
+    if(head.x === food.x &&
+       head.y === food.y){
+
+        score++;
+
+        if(score > bestScore){
+
+            bestScore = score;
+
+            localStorage.setItem(
+                "bestScore",
+                bestScore
+            );
+        }
+
+        food = spawnFood();
+
+    }else{
+
+        snake.pop();
+    }
+
+    updateLabels();
+    draw();
+
+    setTimeout(move,speed);
+}
+
+function gameOver(){
+
+    ctx.fillStyle = "white";
+
+    ctx.font = "40px Arial";
+
+    ctx.fillText(
+        "GAME OVER",
+        80,
+        200
+    );
+
+    // OPEN AD PAGE
+    window.open(
+        "watch_this.html",
+        "_blank"
+    );
+}
+
+function startGame(){
+
+    snake = [{x:100,y:100}];
+
+    direction = "Right";
+
+    food = spawnFood();
+
+    score = 0;
+
+    running = true;
+    paused = false;
+
+    updateLabels();
+
+    draw();
+    move();
+}
+
+function restartGame(){
+
+    startGame();
+}
+
+function togglePause(){
+
+    paused = !paused;
+}
+
+function setLevel(level){
+
+    currentLevel = level;
+
+    speed = speeds[level];
+
+    updateLabels();
+}
+
+document.addEventListener("keydown",(e)=>{
+
+    if(e.key === "ArrowUp" &&
+       direction !== "Down")
+       direction = "Up";
+
+    else if(e.key === "ArrowDown" &&
+       direction !== "Up")
+       direction = "Down";
+
+    else if(e.key === "ArrowLeft" &&
+       direction !== "Right")
+       direction = "Left";
+
+    else if(e.key === "ArrowRight" &&
+       direction !== "Left")
+       direction = "Right";
+});
+
+draw();
+
+</script>
+
+</body>
+</html>
